@@ -1,0 +1,84 @@
+name: Deploy Serverless App
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Choose AWS region based on branch
+    env:
+      REGION_DEVELOP: ${{ vars.AWS_REGION_DEVELOP }}
+      REGION_MAIN:    ${{ vars.AWS_REGION_MAIN }}
+
+    steps:
+      # -----------------------------------------------------------------
+      # 1️⃣ Checkout the repo
+      # -----------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------
+      # 2️⃣ Set up Node (same version you use locally)
+      # -----------------------------------------------------------------
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'   # ajusta si usas otra versión
+
+      # -----------------------------------------------------------------
+      # 3️⃣ Install dependencies (npm ci = clean install)
+      # -----------------------------------------------------------------
+      - name: Install dependencies
+        run: npm ci
+
+      # -----------------------------------------------------------------
+      # 4️⃣ Create .env file from secret
+      # -----------------------------------------------------------------
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+          echo "SERVICE_ACTIVE=${{ vars.SERVICE_ACTIVE }}" >> .env
+
+      # -----------------------------------------------------------------
+      # 5️⃣ Configure AWS credentials
+      # -----------------------------------------------------------------
+      #   • Añade los siguientes *secrets* al repo:
+      #       • `AWS_ACCESS_KEY_ID`
+      #       • `AWS_SECRET_ACCESS_KEY`
+      #       • `ENV_FILE` (contenido completo del archivo .env sin SERVICE_ACTIVE)
+      #       • `SERVICE_ACTIVE` (true o false)
+      #   • Añade las siguientes *variables* al repo:
+      #       • `AWS_REGION_DEVELOP`
+      #       • `AWS_REGION_MAIN`
+      # -----------------------------------------------------------------
+      - name: Configure AWS credentials (develop)
+        if: github.ref == 'refs/heads/develop'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION_DEVELOP }}
+
+      - name: Configure AWS credentials (main)
+        if: github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION_MAIN }}
+
+      # -----------------------------------------------------------------
+      # 6️⃣ Deploy with Serverless
+      # -----------------------------------------------------------------
+      - name: Deploy to AWS (develop)
+        if: github.ref == 'refs/heads/develop'
+        run: npx serverless deploy --stage dev
+
+      - name: Deploy to AWS (main)
+        if: github.ref == 'refs/heads/main'
+        run: npx serverless deploy --stage prod

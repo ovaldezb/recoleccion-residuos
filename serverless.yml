@@ -1,0 +1,31 @@
+service: recoleccion-residuos-bot
+
+frameworkVersion: '3'
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-west-1
+  environment:
+    WHATSAPP_TOKEN: ${env:WHATSAPP_TOKEN}
+    VERIFY_TOKEN: ${env:VERIFY_TOKEN}
+    GOOGLE_SHEET_ID: ${env:GOOGLE_SHEET_ID}
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: ${env:GOOGLE_SERVICE_ACCOUNT_EMAIL}
+    GOOGLE_PRIVATE_KEY: ${env:GOOGLE_PRIVATE_KEY}
+    PhoneNumberID: ${env:PhoneNumberID}
+
+functions:
+  webhook:
+    handler: src/handler.webhook
+    events:
+      - http:
+          path: webhook
+          method: get
+      - http:
+          path: webhook
+          method: post
+
+plugins:
+  - serverless-dotenv-plugin
