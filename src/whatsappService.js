@@ -14,7 +14,7 @@ const processMessage = async (message, contact) => {
     // Check if service is active
     const serviceActive = process.env.SERVICE_ACTIVE === 'true';
     if (!serviceActive) {
-        await sendWhatsAppMessage(message.from, 'El servicio está temporalmente fuera de línea. Por favor, inténtalo más tarde.');
+        console.log('Service is inactive. Ignoring message.');
         return;
     }
     const from = message.from; // Phone number

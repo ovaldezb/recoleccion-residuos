@@ -3,7 +3,7 @@ const { GoogleSpreadsheet } = require('google-spreadsheet');
 let doc = null;
 
 const getDoc = async () => {
-    if (doc) return doc;
+    if (doc && doc.title) return doc; // Check if doc is actually loaded
 
     doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
 
