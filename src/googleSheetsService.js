@@ -1,24 +1,32 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 
 let doc = null;
+let isDocLoaded = false;
 
 const getDoc = async () => {
-    if (doc && doc.title) return doc; // Check if doc is actually loaded
+    if (doc && isDocLoaded) return doc;
 
-    doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
+    try {
+        doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
 
-    let privateKey = process.env.GOOGLE_PRIVATE_KEY;
-    if (privateKey && privateKey.startsWith('"') && privateKey.endsWith('"')) {
-        privateKey = privateKey.substring(1, privateKey.length - 1);
+        let privateKey = process.env.GOOGLE_PRIVATE_KEY;
+        if (privateKey && privateKey.startsWith('"') && privateKey.endsWith('"')) {
+            privateKey = privateKey.substring(1, privateKey.length - 1);
+        }
+
+        await doc.useServiceAccountAuth({
+            client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            private_key: privateKey ? privateKey.replace(/\\n/g, '\n') : '',
+        });
+
+        await doc.loadInfo();
+        isDocLoaded = true;
+        return doc;
+    } catch (error) {
+        doc = null;
+        isDocLoaded = false;
+        throw error;
     }
-
-    await doc.useServiceAccountAuth({
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: privateKey ? privateKey.replace(/\\n/g, '\n') : '',
-    });
-
-    await doc.loadInfo();
-    return doc;
 };
 
 // We assume:
