@@ -9,13 +9,24 @@ const getDoc = async () => {
 
     try {
         let privateKey = process.env.GOOGLE_PRIVATE_KEY;
-        if (privateKey && privateKey.startsWith('"') && privateKey.endsWith('"')) {
-            privateKey = privateKey.substring(1, privateKey.length - 1);
+
+        if (privateKey) {
+            // Precise extraction of the PEM block to avoid quote/space/escape issues
+            // Handles both literal newlines and escaped \n
+            const match = privateKey.match(/-----BEGIN PRIVATE KEY-----([\s\S]*)-----END PRIVATE KEY-----/);
+            if (match) {
+                // Keep the headers but clean the content inside
+                const content = match[1].replace(/\\n/g, '\n').replace(/\s/g, '');
+                // Google expects chunks of 64 chars usually, but gtoken handles flat strings
+                privateKey = `-----BEGIN PRIVATE KEY-----\n${content}\n-----END PRIVATE KEY-----\n`;
+            } else {
+                privateKey = privateKey.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').trim();
+            }
         }
 
         const auth = new JWT({
             email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-            key: privateKey ? privateKey.replace(/\\n/g, '\n') : '',
+            key: privateKey,
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
 
