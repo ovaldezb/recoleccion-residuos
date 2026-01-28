@@ -7,9 +7,14 @@ const getDoc = async () => {
 
     doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
 
+    let privateKey = process.env.GOOGLE_PRIVATE_KEY;
+    if (privateKey && privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.substring(1, privateKey.length - 1);
+    }
+
     await doc.useServiceAccountAuth({
         client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        private_key: privateKey ? privateKey.replace(/\\n/g, '\n') : '',
     });
 
     await doc.loadInfo();
