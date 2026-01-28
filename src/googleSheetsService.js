@@ -9,15 +9,12 @@ const getDoc = async () => {
 
     try {
         let privateKey = process.env.GOOGLE_PRIVATE_KEY;
-
+        console.log(privateKey);
         if (privateKey) {
-            // Precise extraction of the PEM block to avoid quote/space/escape issues
-            // Handles both literal newlines and escaped \n
+            // Robust extraction of PEM just in case, but legacy provider will do the heavy lifting
             const match = privateKey.match(/-----BEGIN PRIVATE KEY-----([\s\S]*)-----END PRIVATE KEY-----/);
             if (match) {
-                // Keep the headers but clean the content inside
                 const content = match[1].replace(/\\n/g, '\n').replace(/\s/g, '');
-                // Google expects chunks of 64 chars usually, but gtoken handles flat strings
                 privateKey = `-----BEGIN PRIVATE KEY-----\n${content}\n-----END PRIVATE KEY-----\n`;
             } else {
                 privateKey = privateKey.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').trim();
@@ -43,17 +40,13 @@ const getDoc = async () => {
     }
 };
 
-// We assume:
-// Sheet 0: "Sessions" (Header: Phone, State, Name, Location, Type, Day, Comment)
-// Sheet 1: "Completed" (Header: Phone, Name, Location, Type, Day, Comment, Date)
+// ... (rest of the file remains the same)
 
 const getSession = async (phoneNumber) => {
     const doc = await getDoc();
-    const sheet = doc.sheetsByIndex[0]; // Sessions sheet
+    const sheet = doc.sheetsByIndex[0];
     const rows = await sheet.getRows();
-
     const userRow = rows.find(row => row.get('Phone') === phoneNumber);
-
     if (userRow) {
         return {
             phone: userRow.get('Phone'),
@@ -63,7 +56,7 @@ const getSession = async (phoneNumber) => {
             type: userRow.get('Type'),
             day: userRow.get('Day'),
             comment: userRow.get('Comment'),
-            _row: userRow // Internal use
+            _row: userRow
         };
     }
     return null;
@@ -88,7 +81,6 @@ const updateSession = async (phoneNumber, data) => {
     const sheet = doc.sheetsByIndex[0];
     const rows = await sheet.getRows();
     const userRow = rows.find(row => row.get('Phone') === phoneNumber);
-
     if (userRow) {
         if (data.state) userRow.set('State', data.state);
         if (data.name) userRow.set('Name', data.name);
@@ -103,11 +95,8 @@ const updateSession = async (phoneNumber, data) => {
 const archiveSession = async (phoneNumber) => {
     const session = await getSession(phoneNumber);
     if (!session) return;
-
     const doc = await getDoc();
-    const completedSheet = doc.sheetsByIndex[1]; // Completed sheet
-
-    // Add to completed
+    const completedSheet = doc.sheetsByIndex[1];
     await completedSheet.addRow({
         Phone: session.phone,
         Name: session.name,
@@ -117,8 +106,6 @@ const archiveSession = async (phoneNumber) => {
         Comment: session.comment || '',
         Date: new Date().toISOString()
     });
-
-    // Delete from sessions
     await session._row.delete();
 };
 

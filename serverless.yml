@@ -15,6 +15,7 @@ provider:
     GOOGLE_SERVICE_ACCOUNT_EMAIL: ${env:GOOGLE_SERVICE_ACCOUNT_EMAIL}
     GOOGLE_PRIVATE_KEY: ${env:GOOGLE_PRIVATE_KEY}
     PhoneNumberID: ${env:PhoneNumberID}
+    NODE_OPTIONS: --openssl-legacy-provider
 
 functions:
   webhook:
