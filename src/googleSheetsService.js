@@ -1,4 +1,5 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
+const { JWT } = require('google-auth-library');
 
 let doc = null;
 let isDocLoaded = false;
@@ -7,17 +8,18 @@ const getDoc = async () => {
     if (doc && isDocLoaded) return doc;
 
     try {
-        doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
-
         let privateKey = process.env.GOOGLE_PRIVATE_KEY;
         if (privateKey && privateKey.startsWith('"') && privateKey.endsWith('"')) {
             privateKey = privateKey.substring(1, privateKey.length - 1);
         }
 
-        await doc.useServiceAccountAuth({
-            client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-            private_key: privateKey ? privateKey.replace(/\\n/g, '\n') : '',
+        const auth = new JWT({
+            email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            key: privateKey ? privateKey.replace(/\\n/g, '\n') : '',
+            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
+
+        doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, auth);
 
         await doc.loadInfo();
         isDocLoaded = true;
@@ -25,6 +27,7 @@ const getDoc = async () => {
     } catch (error) {
         doc = null;
         isDocLoaded = false;
+        console.error('Error initializing Google Spreadsheet:', error);
         throw error;
     }
 };
@@ -38,17 +41,17 @@ const getSession = async (phoneNumber) => {
     const sheet = doc.sheetsByIndex[0]; // Sessions sheet
     const rows = await sheet.getRows();
 
-    const userRow = rows.find(row => row.Phone === phoneNumber);
+    const userRow = rows.find(row => row.get('Phone') === phoneNumber);
 
     if (userRow) {
         return {
-            phone: userRow.Phone,
-            state: userRow.State,
-            name: userRow.Name,
-            location: userRow.Location,
-            type: userRow.Type,
-            day: userRow.Day,
-            comment: userRow.Comment,
+            phone: userRow.get('Phone'),
+            state: userRow.get('State'),
+            name: userRow.get('Name'),
+            location: userRow.get('Location'),
+            type: userRow.get('Type'),
+            day: userRow.get('Day'),
+            comment: userRow.get('Comment'),
             _row: userRow // Internal use
         };
     }
@@ -73,15 +76,15 @@ const updateSession = async (phoneNumber, data) => {
     const doc = await getDoc();
     const sheet = doc.sheetsByIndex[0];
     const rows = await sheet.getRows();
-    const userRow = rows.find(row => row.Phone === phoneNumber);
+    const userRow = rows.find(row => row.get('Phone') === phoneNumber);
 
     if (userRow) {
-        if (data.state) userRow.State = data.state;
-        if (data.name) userRow.Name = data.name;
-        if (data.location) userRow.Location = data.location;
-        if (data.type) userRow.Type = data.type;
-        if (data.day) userRow.Day = data.day;
-        if (data.comment) userRow.Comment = data.comment;
+        if (data.state) userRow.set('State', data.state);
+        if (data.name) userRow.set('Name', data.name);
+        if (data.location) userRow.set('Location', data.location);
+        if (data.type) userRow.set('Type', data.type);
+        if (data.day) userRow.set('Day', data.day);
+        if (data.comment) userRow.set('Comment', data.comment);
         await userRow.save();
     }
 };
